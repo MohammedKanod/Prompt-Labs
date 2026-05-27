@@ -84,27 +84,50 @@ export async function deleteCategory(id: string): Promise<void> {
   await deleteDoc(doc(db, "categories", id));
 }
 
-// SEED
+// SEED — auto-seed on first load (no-op if data exists)
 export async function seedInitialData(): Promise<void> {
-  const postsSnapshot = await withTimeout(getDocs(collection(db, "posts")));
-  if (postsSnapshot.empty) {
-    const batch = writeBatch(db);
-    
-    // Seed Categories first
-    INITIAL_CATEGORIES.forEach(cat => {
-      const catRef = doc(collection(db, "categories"));
-      const { id, ...data } = cat;
-      batch.set(catRef, data);
-    });
-
-    // Seed Posts
-    INITIAL_POSTS.forEach(post => {
-      const postRef = doc(collection(db, "posts"));
-      const { id, ...data } = post;
-      batch.set(postRef, data);
-    });
-
-    await batch.commit();
-    console.log("Initial data seeded successfully");
+  try {
+    const postsSnapshot = await withTimeout(getDocs(collection(db, "posts")));
+    if (!postsSnapshot.empty) return;
+    await _writeSeedBatch();
+  } catch {
+    // Silently fail — Firestore may not be configured yet
   }
+}
+
+// FORCE SEED — always writes demo data, called from Admin dashboard
+export async function forceSeedData(): Promise<{ posts: number; categories: number }> {
+  await _writeSeedBatch();
+  return { posts: INITIAL_POSTS.length, categories: INITIAL_CATEGORIES.length };
+}
+
+// CLEAR ALL — deletes every post and category document
+export async function clearAllData(): Promise<void> {
+  const [postsSnap, catsSnap] = await Promise.all([
+    withTimeout(getDocs(collection(db, "posts"))),
+    withTimeout(getDocs(collection(db, "categories"))),
+  ]);
+
+  const batch = writeBatch(db);
+  postsSnap.docs.forEach(d => batch.delete(d.ref));
+  catsSnap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+}
+
+async function _writeSeedBatch(): Promise<void> {
+  const batch = writeBatch(db);
+
+  INITIAL_CATEGORIES.forEach(cat => {
+    const ref = doc(collection(db, "categories"));
+    const { id: _id, ...data } = cat;
+    batch.set(ref, data);
+  });
+
+  INITIAL_POSTS.forEach(post => {
+    const ref = doc(collection(db, "posts"));
+    const { id: _id, ...data } = post;
+    batch.set(ref, data);
+  });
+
+  await batch.commit();
 }

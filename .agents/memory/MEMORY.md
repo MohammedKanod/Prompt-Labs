@@ -1,0 +1,2 @@
+- [Firebase setup](firebase-setup.md) — Firestore hangs indefinitely if DB not created in Firebase Console; withTimeout(8s) prevents infinite skeleton state.
+- [Admin access](admin-access.md) — Hidden Easter egg: 20 clicks on About page logo → password modal → MohammedK@515253 → sessionStorage auth.

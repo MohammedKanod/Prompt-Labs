@@ -21,7 +21,12 @@ import {
   Image as ImageIcon,
   Loader2,
   Check,
-  ChevronRight
+  ChevronRight,
+  Database,
+  RefreshCw,
+  AlertTriangle,
+  Terminal,
+  CheckCircle2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -32,8 +37,10 @@ import {
   useDeletePost,
   useCreateCategory,
   useUpdateCategory,
-  useDeleteCategory
+  useDeleteCategory,
+  useQueryClient
 } from "@/hooks/usePosts";
+import { forceSeedData, clearAllData } from "@/lib/firestore";
 import { 
   Dialog, 
   DialogContent, 
@@ -127,11 +134,12 @@ export default function Admin() {
       </div>
 
       <Tabs defaultValue="analytics" className="w-full">
-        <TabsList className="bg-card border border-white/10 mb-8 p-1 rounded-lg">
+        <TabsList className="bg-card border border-white/10 mb-8 p-1 rounded-lg flex-wrap h-auto gap-1">
           <TabsTrigger value="analytics" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-secondary-foreground">Analytics</TabsTrigger>
           <TabsTrigger value="posts" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-secondary-foreground">Posts</TabsTrigger>
           <TabsTrigger value="categories" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-secondary-foreground">Categories</TabsTrigger>
           <TabsTrigger value="homepage" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-secondary-foreground">Homepage</TabsTrigger>
+          <TabsTrigger value="settings" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-secondary-foreground">Settings & Data</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analytics">
@@ -289,6 +297,10 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <SettingsTab />
         </TabsContent>
       </Tabs>
 
@@ -731,5 +743,233 @@ function CategoryDialog({ isOpen, onClose, category }: { isOpen: boolean, onClos
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /categories/{catId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}`;
+
+const STORAGE_RULES = `rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}`;
+
+function SettingsTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [seeding, setSeeding] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [seedResult, setSeedResult] = useState<{ posts: number; categories: number } | null>(null);
+  const [copiedRules, setCopiedRules] = useState<"firestore" | "storage" | null>(null);
+  const [copiedIndexes, setCopiedIndexes] = useState(false);
+
+  const handleSeed = async () => {
+    if (!window.confirm(`This will add ${8} demo posts and ${6} categories to Firestore. Existing data is kept.\n\nContinue?`)) return;
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const result = await forceSeedData();
+      setSeedResult(result);
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      toast({ title: `Seeded ${result.posts} posts and ${result.categories} categories` });
+    } catch (err: unknown) {
+      toast({ title: "Seed failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleClear = async () => {
+    const confirmed = window.confirm(
+      "WARNING: This will permanently delete ALL posts and categories from Firestore.\n\nThis cannot be undone. Are you absolutely sure?"
+    );
+    if (!confirmed) return;
+    const doubleConfirm = window.confirm("Last chance — delete everything?");
+    if (!doubleConfirm) return;
+
+    setClearing(true);
+    try {
+      await clearAllData();
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      toast({ title: "All data cleared from Firestore" });
+    } catch (err: unknown) {
+      toast({ title: "Clear failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string, type: "firestore" | "storage" | "indexes") => {
+    await navigator.clipboard.writeText(text);
+    if (type === "indexes") { setCopiedIndexes(true); setTimeout(() => setCopiedIndexes(false), 2000); }
+    else { setCopiedRules(type); setTimeout(() => setCopiedRules(null), 2000); }
+  };
+
+  const indexJson = JSON.stringify({
+    indexes: [
+      { collectionGroup: "posts", queryScope: "COLLECTION", fields: [{ fieldPath: "published", order: "ASCENDING" }, { fieldPath: "createdAt", order: "DESCENDING" }] },
+      { collectionGroup: "posts", queryScope: "COLLECTION", fields: [{ fieldPath: "published", order: "ASCENDING" }, { fieldPath: "featured", order: "ASCENDING" }, { fieldPath: "createdAt", order: "DESCENDING" }] },
+      { collectionGroup: "posts", queryScope: "COLLECTION", fields: [{ fieldPath: "published", order: "ASCENDING" }, { fieldPath: "reelEnabled", order: "ASCENDING" }, { fieldPath: "createdAt", order: "DESCENDING" }] },
+    ],
+    fieldOverrides: []
+  }, null, 2);
+
+  const steps = [
+    { label: "Create Firestore Database", detail: "Firebase Console → Build → Firestore Database → Create database → choose region → Start in test mode → Enable" },
+    { label: "Set Firestore Security Rules", detail: "Firestore → Rules tab → paste the rules below → Publish" },
+    { label: "Enable Firebase Storage", detail: "Firebase Console → Build → Storage → Get started → choose region → Done" },
+    { label: "Set Storage Security Rules", detail: "Storage → Rules tab → paste the rules below → Publish" },
+    { label: "Seed Demo Data (optional)", detail: "Come back here and click the Seed button below to populate 8 demo posts and 6 categories" },
+  ];
+
+  return (
+    <div className="space-y-10">
+      {/* Setup Checklist */}
+      <div>
+        <h2 className="text-xl font-semibold text-white mb-2">Firebase Setup Checklist</h2>
+        <p className="text-secondary-foreground text-sm mb-6">Complete these steps once to make Prompt Labs fully functional with your Firebase project.</p>
+        <div className="space-y-3">
+          {steps.map((step, i) => (
+            <div key={i} className="flex gap-4 p-4 bg-card border border-white/5 rounded-xl">
+              <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</div>
+              <div>
+                <p className="text-white font-medium">{step.label}</p>
+                <p className="text-secondary-foreground text-sm mt-0.5">{step.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Firestore Rules */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Terminal size={16} className="text-primary" />
+            <h3 className="text-white font-semibold">Firestore Security Rules</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 text-secondary-foreground hover:text-white"
+            onClick={() => copyToClipboard(FIRESTORE_RULES, "firestore")}
+          >
+            {copiedRules === "firestore" ? <><CheckCircle2 size={14} className="mr-1.5 text-green-400" />Copied</> : <><Copy size={14} className="mr-1.5" />Copy</>}
+          </Button>
+        </div>
+        <pre className="bg-[#0a0c10] border border-white/10 rounded-xl p-5 text-sm text-[#C2C7CF] overflow-x-auto leading-relaxed font-mono whitespace-pre">{FIRESTORE_RULES}</pre>
+      </div>
+
+      {/* Storage Rules */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Terminal size={16} className="text-primary" />
+            <h3 className="text-white font-semibold">Firebase Storage Rules</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 text-secondary-foreground hover:text-white"
+            onClick={() => copyToClipboard(STORAGE_RULES, "storage")}
+          >
+            {copiedRules === "storage" ? <><CheckCircle2 size={14} className="mr-1.5 text-green-400" />Copied</> : <><Copy size={14} className="mr-1.5" />Copy</>}
+          </Button>
+        </div>
+        <pre className="bg-[#0a0c10] border border-white/10 rounded-xl p-5 text-sm text-[#C2C7CF] overflow-x-auto leading-relaxed font-mono whitespace-pre">{STORAGE_RULES}</pre>
+      </div>
+
+      {/* Composite Indexes */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Database size={16} className="text-primary" />
+              <h3 className="text-white font-semibold">Firestore Composite Indexes</h3>
+            </div>
+            <p className="text-secondary-foreground text-xs mt-1 ml-6">Paste into <code className="text-white/60">firestore.indexes.json</code> in your project root for future filtered queries.</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 text-secondary-foreground hover:text-white shrink-0"
+            onClick={() => copyToClipboard(indexJson, "indexes")}
+          >
+            {copiedIndexes ? <><CheckCircle2 size={14} className="mr-1.5 text-green-400" />Copied</> : <><Copy size={14} className="mr-1.5" />Copy</>}
+          </Button>
+        </div>
+        <pre className="bg-[#0a0c10] border border-white/10 rounded-xl p-5 text-sm text-[#C2C7CF] overflow-x-auto leading-relaxed font-mono whitespace-pre">{indexJson}</pre>
+      </div>
+
+      {/* Data Management */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Seed */}
+        <div className="bg-card border border-white/5 rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <RefreshCw size={18} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold">Seed Demo Data</h3>
+              <p className="text-secondary-foreground text-xs">Adds 8 demo posts + 6 categories to Firestore.</p>
+            </div>
+          </div>
+          {seedResult && (
+            <div className="flex items-center gap-2 text-green-400 text-sm bg-green-400/10 rounded-lg px-3 py-2">
+              <CheckCircle2 size={14} />
+              Seeded {seedResult.posts} posts, {seedResult.categories} categories
+            </div>
+          )}
+          <Button
+            onClick={handleSeed}
+            disabled={seeding}
+            className="w-full bg-primary hover:bg-primary/90 text-white"
+            data-testid="button-seed-data"
+          >
+            {seeding ? <><Loader2 size={14} className="mr-2 animate-spin" />Seeding...</> : "Seed Demo Data"}
+          </Button>
+        </div>
+
+        {/* Clear */}
+        <div className="bg-card border border-red-500/10 rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <AlertTriangle size={18} className="text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold">Clear All Data</h3>
+              <p className="text-secondary-foreground text-xs">Permanently deletes all posts and categories.</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleClear}
+            disabled={clearing}
+            variant="outline"
+            className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50"
+            data-testid="button-clear-data"
+          >
+            {clearing ? <><Loader2 size={14} className="mr-2 animate-spin" />Clearing...</> : "Clear All Data"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

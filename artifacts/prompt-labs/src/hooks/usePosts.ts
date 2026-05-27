@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+export { useQueryClient };
 import * as fs from "@/lib/firestore";
 import { Post, Category } from "@/lib/store";
 
