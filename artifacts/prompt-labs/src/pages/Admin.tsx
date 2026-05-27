@@ -31,7 +31,10 @@ import {
   CheckCircle2,
   Radio,
   WifiOff,
-  Clock
+  Clock,
+  FileJson,
+  ChevronDown,
+  CloudUpload
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -455,28 +458,51 @@ function AnalyticsTab() {
   );
 }
 
+const POST_JSON_SCHEMA = `{
+  "title": "...",
+  "prompt": "Full prompt text here",
+  "blurPrompt": "Partial teaser shown to locked users",
+  "tags": ["tag1", "tag2"],
+  "category": "Cinematic",
+  "modelUsed": "Midjourney v6",
+  "featured": false,
+  "reelEnabled": false,
+  "published": true
+}`;
+
 function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, onClose: () => void, post: Post | null, categories: Category[] }) {
   const { toast } = useToast();
   const createMutation = useCreatePost();
   const updateMutation = useUpdatePost();
 
-  const [formData, setFormData] = useState<Partial<Post>>({
+  const emptyForm = (): Partial<Post> => ({
     title: "",
     prompt: "",
     blurPrompt: "",
     beforeImage: "",
     afterImage: "",
     tags: [],
-    category: "",
-    modelUsed: "",
+    category: categories[0]?.name || "",
+    modelUsed: "Midjourney v6",
     featured: false,
     reelEnabled: false,
     published: true,
+    views: 0,
+    unlockCount: 0,
+    copyCount: 0,
+    shareCount: 0,
+    createdAt: new Date().toISOString(),
   });
 
+  const [formData, setFormData] = useState<Partial<Post>>(emptyForm());
   const [tagInput, setTagInput] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState<false | 'before' | 'after'>(false);
   const [generatedId, setGeneratedId] = useState("");
+
+  // JSON paste panel state
+  const [jsonPanelOpen, setJsonPanelOpen] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonError, setJsonError] = useState("");
 
   useEffect(() => {
     if (post) {
@@ -486,40 +512,46 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
     } else {
       const newId = Math.floor(10000 + Math.random() * 90000).toString();
       setGeneratedId(newId);
-      setFormData({
-        title: "",
-        prompt: "",
-        blurPrompt: "",
-        beforeImage: "",
-        afterImage: "",
-        tags: [],
-        category: categories[0]?.name || "",
-        modelUsed: "Midjourney v6",
-        featured: false,
-        reelEnabled: false,
-        published: true,
-        views: 0,
-        unlockCount: 0,
-        copyCount: 0,
-        shareCount: 0,
-        createdAt: new Date().toISOString(),
-      });
+      setFormData(emptyForm());
       setTagInput("");
     }
+    setJsonInput("");
+    setJsonError("");
+    setJsonPanelOpen(false);
   }, [post, categories, isOpen]);
+
+  const applyJson = () => {
+    setJsonError("");
+    try {
+      const parsed = JSON.parse(jsonInput) as Partial<Post>;
+      const textFields: (keyof Post)[] = ["title", "prompt", "blurPrompt", "category", "modelUsed", "featured", "reelEnabled", "published"];
+      const update: Partial<Post> = {};
+      for (const k of textFields) {
+        if (k in parsed) (update as Record<string, unknown>)[k] = (parsed as Record<string, unknown>)[k];
+      }
+      if (Array.isArray(parsed.tags)) {
+        update.tags = parsed.tags;
+        setTagInput(parsed.tags.join(", "));
+      }
+      setFormData(prev => ({ ...prev, ...update }));
+      setJsonPanelOpen(false);
+      toast({ title: "JSON applied — now upload your images" });
+    } catch {
+      setJsonError("Invalid JSON — check the format and try again.");
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'beforeImage' | 'afterImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    setIsUploading(true);
+    setIsUploading(field === 'beforeImage' ? 'before' : 'after');
     try {
-      const path = `posts/${generatedId}/${field === 'beforeImage' ? 'before' : 'after'}.webp`;
-      const url = await uploadImage(file, path);
+      const publicId = `prompt-labs/posts/${generatedId}/${field === 'beforeImage' ? 'before' : 'after'}`;
+      const url = await uploadImage(file, publicId);
       setFormData(prev => ({ ...prev, [field]: url }));
-      toast({ title: "Image uploaded successfully" });
+      toast({ title: "Image uploaded to Cloudinary ✓" });
     } catch (error) {
-      toast({ title: "Error uploading image", variant: "destructive" });
+      toast({ title: "Upload failed", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -527,9 +559,8 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tags = tagInput.split(",").map(t => t.trim()).filter(t => t !== "");
+    const tags = tagInput.split(",").map(t => t.trim()).filter(Boolean);
     const slug = `${generatedId}-${formData.title?.toLowerCase().replace(/\s+/g, "-")}`;
-    
     const finalData = { ...formData, tags, slug, id: generatedId } as Post;
 
     try {
@@ -541,26 +572,71 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
         toast({ title: "Post created" });
       }
       onClose();
-    } catch (error) {
+    } catch {
       toast({ title: "Error saving post", variant: "destructive" });
     }
   };
+
+  const busy = isUploading !== false || createMutation.isPending || updateMutation.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border-white/10 text-white">
         <DialogHeader>
           <DialogTitle>{post ? "Edit Post" : "Create New Post"}</DialogTitle>
-          <DialogDescription className="text-secondary-foreground">Fill in the details for your AI prompt showcase.</DialogDescription>
+          <DialogDescription className="text-secondary-foreground">
+            Fill in the form manually, or paste JSON to auto-fill all text fields then upload images.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
+
+          {/* ── JSON Paste Panel ─────────────────────────────────── */}
+          <div className="rounded-xl border border-dashed border-white/15 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setJsonPanelOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-secondary-foreground hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <FileJson size={15} className="text-primary" />
+                Paste JSON to auto-fill text fields
+              </div>
+              <ChevronDown size={14} className={`transition-transform ${jsonPanelOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {jsonPanelOpen && (
+              <div className="px-4 pb-4 space-y-3 border-t border-white/10 pt-4 bg-background/40">
+                <p className="text-xs text-secondary-foreground">
+                  Paste a JSON object with any of these keys:{" "}
+                  <code className="text-primary/80">title, prompt, blurPrompt, tags, category, modelUsed, featured, reelEnabled, published</code>
+                </p>
+                <Textarea
+                  value={jsonInput}
+                  onChange={e => { setJsonInput(e.target.value); setJsonError(""); }}
+                  placeholder={POST_JSON_SCHEMA}
+                  className="bg-background border-white/10 font-mono text-xs min-h-[160px] leading-relaxed"
+                />
+                {jsonError && <p className="text-xs text-red-400">{jsonError}</p>}
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" onClick={applyJson} className="bg-primary text-white">
+                    Apply JSON
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setJsonInput(POST_JSON_SCHEMA)} className="text-secondary-foreground hover:text-white border border-white/10">
+                    Insert schema
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Basic fields ─────────────────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Title</Label>
-              <Input 
-                value={formData.title} 
-                onChange={e => setFormData({ ...formData, title: e.target.value })} 
+              <Input
+                value={formData.title}
+                onChange={e => setFormData({ ...formData, title: e.target.value })}
                 required
                 className="bg-background border-white/10"
               />
@@ -575,72 +651,82 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
 
           <div className="space-y-2">
             <Label>Prompt Text</Label>
-            <Textarea 
-              value={formData.prompt} 
-              onChange={e => setFormData({ ...formData, prompt: e.target.value })} 
+            <Textarea
+              value={formData.prompt}
+              onChange={e => setFormData({ ...formData, prompt: e.target.value })}
               required
               className="bg-background border-white/10 min-h-[100px]"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Blur Prompt Preview (Partial version shown to locked users)</Label>
-            <Textarea 
-              value={formData.blurPrompt} 
-              onChange={e => setFormData({ ...formData, blurPrompt: e.target.value })} 
+            <Label>Blur Prompt Preview <span className="text-secondary-foreground font-normal">(shown to locked users)</span></Label>
+            <Textarea
+              value={formData.blurPrompt}
+              onChange={e => setFormData({ ...formData, blurPrompt: e.target.value })}
               required
               className="bg-background border-white/10"
             />
           </div>
 
+          {/* ── Image uploads ─────────────────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <Label>Before Image</Label>
-              <div className="space-y-2">
-                <Input 
-                  placeholder="Image URL" 
-                  value={formData.beforeImage} 
-                  onChange={e => setFormData({ ...formData, beforeImage: e.target.value })}
-                  className="bg-background border-white/10"
-                />
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] text-white/30 uppercase tracking-widest">OR</span>
-                  <div className="h-px flex-1 bg-white/10" />
-                </div>
-                <Input type="file" onChange={e => handleImageUpload(e, 'beforeImage')} className="bg-background border-white/10" />
-              </div>
-              {formData.beforeImage && (
-                <div className="relative aspect-video rounded-lg overflow-hidden border border-white/10">
-                  <img src={formData.beforeImage} alt="Before preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
+            {(['beforeImage', 'afterImage'] as const).map(field => {
+              const label = field === 'beforeImage' ? 'Before Image' : 'After Image';
+              const uploading = isUploading === (field === 'beforeImage' ? 'before' : 'after');
+              return (
+                <div key={field} className="space-y-3">
+                  <Label>{label}</Label>
 
-            <div className="space-y-4">
-              <Label>After Image</Label>
-              <div className="space-y-2">
-                <Input 
-                  placeholder="Image URL" 
-                  value={formData.afterImage} 
-                  onChange={e => setFormData({ ...formData, afterImage: e.target.value })}
-                  className="bg-background border-white/10"
-                />
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] text-white/30 uppercase tracking-widest">OR</span>
-                  <div className="h-px flex-1 bg-white/10" />
+                  {/* URL paste */}
+                  <Input
+                    placeholder="Paste image URL"
+                    value={formData[field]}
+                    onChange={e => setFormData({ ...formData, [field]: e.target.value })}
+                    className="bg-background border-white/10"
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-white/10" />
+                    <span className="text-[10px] text-white/30 uppercase tracking-widest">OR upload</span>
+                    <div className="h-px flex-1 bg-white/10" />
+                  </div>
+
+                  {/* File upload */}
+                  <label className={`flex flex-col items-center justify-center gap-2 border border-dashed rounded-lg p-4 cursor-pointer transition-colors
+                    ${uploading ? "border-primary/50 bg-primary/5" : "border-white/10 hover:border-white/20 hover:bg-white/5"}`}>
+                    {uploading
+                      ? <><Loader2 size={20} className="animate-spin text-primary" /><span className="text-xs text-primary">Uploading to Cloudinary…</span></>
+                      : <><CloudUpload size={20} className="text-secondary-foreground" /><span className="text-xs text-secondary-foreground">Click to select file</span></>
+                    }
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => handleImageUpload(e, field)}
+                      disabled={!!isUploading}
+                    />
+                  </label>
+
+                  {/* Preview */}
+                  {formData[field] && (
+                    <div className="relative aspect-video rounded-lg overflow-hidden border border-white/10">
+                      <img src={formData[field]} alt={label} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setFormData(p => ({ ...p, [field]: "" }))}
+                        className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80 transition-colors"
+                      >
+                        <Trash2 size={12} className="text-white" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <Input type="file" onChange={e => handleImageUpload(e, 'afterImage')} className="bg-background border-white/10" />
-              </div>
-              {formData.afterImage && (
-                <div className="relative aspect-video rounded-lg overflow-hidden border border-white/10">
-                  <img src={formData.afterImage} alt="After preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
+              );
+            })}
           </div>
 
+          {/* ── Category / Model ──────────────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Category</Label>
@@ -657,18 +743,19 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
             </div>
             <div className="space-y-2">
               <Label>Model Used</Label>
-              <Input 
-                value={formData.modelUsed} 
+              <Input
+                value={formData.modelUsed}
                 onChange={e => setFormData({ ...formData, modelUsed: e.target.value })}
                 className="bg-background border-white/10"
               />
             </div>
           </div>
 
+          {/* ── Tags ──────────────────────────────────────────────── */}
           <div className="space-y-2">
-            <Label>Tags (Comma separated)</Label>
-            <Input 
-              value={tagInput} 
+            <Label>Tags <span className="text-secondary-foreground font-normal">(comma-separated)</span></Label>
+            <Input
+              value={tagInput}
               onChange={e => setTagInput(e.target.value)}
               placeholder="cinematic, neon, tokyo"
               className="bg-background border-white/10"
@@ -682,39 +769,30 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
             </div>
           </div>
 
+          {/* ── Toggles ───────────────────────────────────────────── */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 border-t border-white/5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="featured">Featured</Label>
-              <Switch 
-                id="featured" 
-                checked={formData.featured} 
-                onCheckedChange={val => setFormData({ ...formData, featured: val })} 
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="reel">Reel Enabled</Label>
-              <Switch 
-                id="reel" 
-                checked={formData.reelEnabled} 
-                onCheckedChange={val => setFormData({ ...formData, reelEnabled: val })} 
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="published">Published</Label>
-              <Switch 
-                id="published" 
-                checked={formData.published} 
-                onCheckedChange={val => setFormData({ ...formData, published: val })} 
-              />
-            </div>
+            {[
+              { id: "featured", label: "Featured", key: "featured" as keyof Post },
+              { id: "reel", label: "Reel Enabled", key: "reelEnabled" as keyof Post },
+              { id: "published", label: "Published", key: "published" as keyof Post },
+            ].map(({ id, label, key }) => (
+              <div key={id} className="flex items-center justify-between">
+                <Label htmlFor={id}>{label}</Label>
+                <Switch
+                  id={id}
+                  checked={!!formData[key]}
+                  onCheckedChange={val => setFormData({ ...formData, [key]: val })}
+                />
+              </div>
+            ))}
           </div>
 
           <DialogFooter className="pt-6 border-t border-white/5">
             <Button type="button" variant="outline" onClick={onClose} className="border-white/10 text-white hover:bg-white/5">
               Cancel
             </Button>
-            <Button type="submit" disabled={isUploading || createMutation.isPending || updateMutation.isPending} className="bg-primary text-white">
-              {(createMutation.isPending || updateMutation.isPending || isUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={busy} className="bg-primary text-white">
+              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {post ? "Update Post" : "Create Post"}
             </Button>
           </DialogFooter>
