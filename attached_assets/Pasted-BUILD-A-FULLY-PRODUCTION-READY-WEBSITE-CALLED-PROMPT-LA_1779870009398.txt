@@ -1,0 +1,773 @@
+BUILD A FULLY PRODUCTION READY WEBSITE CALLED "PROMPT LABS"
+
+PROJECT IDEA:
+
+Prompt Labs is a premium admin-curated AI prompt archive.
+
+Users discover AI prompts.
+
+Users see:
+
+Before Image → Prompt Preview → After Image
+
+Prompt preview remains blurred.
+
+Users watch rewarded AdSense advertisement.
+
+Prompt unlocks.
+
+Prompt remains unlocked until local midnight (12:00 AM device timezone).
+
+No user signup.
+
+No public accounts.
+
+No community posting.
+
+Admin uploads everything.
+
+Prompt Labs must feel elegant, premium, memorable, smooth and addictive.
+
+NOT futuristic overload.
+
+NOT gaming aesthetic.
+
+NOT cyberpunk.
+
+Feel:
+
+Apple elegance
+
+Luxury editorial
+
+Modern premium technology
+
+Pinterest discovery
+
+Instagram engagement
+
+Fast and minimal
+
+Beautiful enough people remember it.
+
+TECH STACK:
+
+Frontend:
+
+Next.js latest App Router
+
+TypeScript
+
+TailwindCSS
+
+Framer Motion
+
+GSAP lightweight only
+
+Lenis smooth scrolling
+
+TanStack Query
+
+Backend:
+
+Firebase Firestore
+
+Firebase Storage
+
+Firebase Analytics
+
+Hosting optimized for Netlify deployment
+
+Image formats:
+
+AVIF
+
+WebP
+
+Performance target:
+
+Runs smooth on Chrome with 2GB RAM PC.
+
+Runs smooth on budget Android phones.
+
+Maintain smooth 60fps.
+
+Lighthouse target:
+
+95+ SEO
+
+95+ Accessibility
+
+95+ Performance
+
+95+ Best Practices
+
+PERFORMANCE RULES:
+
+Use lazy loading.
+
+Use image compression.
+
+Use virtualization.
+
+Use code splitting.
+
+Use caching.
+
+Use memoization.
+
+Use intersection observer.
+
+Avoid unnecessary rerenders.
+
+Avoid expensive blur layers.
+
+Avoid heavy DOM.
+
+GPU accelerated animations only.
+
+Reduce animation complexity automatically on weaker devices.
+
+Respect reduced motion settings.
+
+Compress assets aggressively.
+
+No lag.
+
+No stutter.
+
+No frame drops.
+
+DESIGN SYSTEM:
+
+Background:
+
+#0F1115
+
+Secondary:
+
+#181B21
+
+Cards:
+
+#1F232B
+
+Primary text:
+
+#FFFFFF
+
+Secondary text:
+
+#C2C7CF
+
+Muted:
+
+#8B909A
+
+Accent:
+
+#3B82F6
+
+Silver:
+
+#D9D9D9
+
+Optional accent:
+
+#F59E0B
+
+Typography:
+
+Premium modern.
+
+Large spacing.
+
+Elegant cards.
+
+Subtle shadows.
+
+Clean rounded corners.
+
+Beautiful whitespace.
+
+No clutter.
+
+LOGO:
+
+Prompt Labs orbital ring logo.
+
+Appears navbar top left.
+
+HOME PAGE STRUCTURE:
+
+Navbar
+
+Hero
+
+Explore Section
+
+Reels Section
+
+Categories Section
+
+Educational Guides
+
+Collections
+
+About Section
+
+Footer
+
+HERO SECTION:
+
+Large elegant hero.
+
+Orbital logo.
+
+Headline:
+
+"Admin curated AI prompts engineered for visual creativity."
+
+Buttons:
+
+Explore Prompts
+
+Smooth elegant motion.
+
+EXPLORE PAGE:
+
+Desktop:
+
+2 column infinite grid.
+
+Mobile:
+
+1 column infinite grid.
+
+Cards contain:
+
+Before Image
+
+After Image
+
+Animated slider
+
+Title
+
+Category
+
+Tags
+
+Model badge
+
+Prompt blur preview
+
+Unlock button
+
+Share button
+
+Admin curated badge
+
+CARD ANIMATION:
+
+Before after slider autoplay loop.
+
+Slider draggable.
+
+Smooth.
+
+Elegant.
+
+PROMPT UNLOCK SYSTEM:
+
+Blur preview shown.
+
+Example:
+
+"Ultra realistic ____ city with _____ lighting..."
+
+Unlock flow:
+
+Click Unlock
+
+Rewarded AdSense Ad
+
+Complete Ad
+
+Prompt unlocks
+
+Prompt remains unlocked until local midnight.
+
+No second ad required same day.
+
+Track unlock analytics.
+
+COPY SYSTEM:
+
+Copy Prompt button.
+
+Animation on click.
+
+Toast:
+
+"Prompt copied"
+
+ADMIN SYSTEM:
+
+No Firebase email authentication.
+
+No email verification.
+
+No username.
+
+No admin page button visible.
+
+Hidden admin system exists.
+
+ABOUT PAGE:
+
+Prompt Labs logo exists.
+
+When clicked 20 consecutive times:
+
+Open hidden admin password modal.
+
+No visible click counter.
+
+No hint system.
+
+No indication secret exists.
+
+Password modal:
+
+Elegant.
+
+Minimal.
+
+Single password input.
+
+Password:
+
+MohammedK@515253
+
+Correct password:
+
+Immediately open Admin Dashboard.
+
+Wrong password:
+
+Show:
+
+"Invalid password"
+
+Admin session remains active until browser closes.
+
+Hide admin UI unless authenticated.
+
+Protect admin routes.
+
+ADMIN DASHBOARD:
+
+Analytics Dashboard
+
+Create Post
+
+Edit Post
+
+Delete Post
+
+Create Category
+
+Delete Category
+
+Rename Category
+
+Homepage Management
+
+Reels Management
+
+Tag Management
+
+Analytics Management
+
+POST CREATION SYSTEM:
+
+Fields:
+
+Title
+
+5 Digit Random Permanent Unique ID
+
+Prompt Text
+
+Blur Prompt Preview
+
+Before Image Upload
+
+After Image Upload
+
+Tags
+
+Category
+
+Model Used
+
+Featured Toggle
+
+Reel Toggle
+
+Publish Toggle
+
+Draft Toggle
+
+Share Toggle
+
+Every post admin only.
+
+No public uploads.
+
+POST URL:
+
+/post/28164-cinematic-rain-city
+
+Every post gets random permanent 5 digit ID.
+
+Examples:
+
+28164
+
+90417
+
+56321
+
+SEARCH SYSTEM:
+
+Instant search.
+
+Tag search.
+
+Title search.
+
+Category search.
+
+Autocomplete.
+
+Fast filtering.
+
+CATEGORIES SYSTEM:
+
+Admin creates categories.
+
+Unlimited categories.
+
+Category pages contain:
+
+Description
+
+Prompt tips
+
+Featured prompts
+
+SEO text
+
+Related tags
+
+REELS SECTION:
+
+Instagram style vertical swipe.
+
+Infinite feed.
+
+Smooth snapping.
+
+Preload adjacent reels.
+
+No lag.
+
+Each reel:
+
+Before Image
+
+After Animation
+
+Unlock Button
+
+Tags
+
+Category
+
+Blur Preview
+
+SHARING SYSTEM:
+
+Every post has:
+
+Share button.
+
+Copy Link
+
+WhatsApp
+
+Telegram
+
+Native Mobile Share API
+
+Generate preview image automatically.
+
+Preview includes:
+
+Title
+
+Before image
+
+After image
+
+Prompt Labs branding
+
+Track:
+
+Share analytics
+
+Popular shares
+
+Share source
+
+CONTENT QUALITY SYSTEM:
+
+Create pages:
+
+About Us
+
+Contact Us
+
+Privacy Policy
+
+Terms Of Service
+
+Disclaimer
+
+FAQ
+
+How Prompt Labs Works
+
+AI Prompt Writing Guide
+
+Prompt Engineering Basics
+
+AI Prompt Beginner Guide
+
+Collections Pages
+
+Category Pages
+
+Educational AI articles
+
+No empty pages.
+
+No placeholder pages.
+
+No coming soon pages.
+
+Navigation simple.
+
+Fast.
+
+Clean.
+
+SEO SYSTEM:
+
+OpenGraph
+
+Metadata
+
+Canonical URLs
+
+Schema markup
+
+Sitemap
+
+Robots.txt
+
+Fast indexing.
+
+DATABASE:
+
+posts:
+
+id
+
+fiveDigitID
+
+slug
+
+title
+
+prompt
+
+blurPrompt
+
+beforeImage
+
+afterImage
+
+tags
+
+category
+
+modelUsed
+
+featured
+
+reelEnabled
+
+views
+
+unlockCount
+
+copyCount
+
+shareCount
+
+createdAt
+
+updatedAt
+
+published
+
+analytics:
+
+views
+
+unlockAnalytics
+
+searchAnalytics
+
+shareAnalytics
+
+sessionAnalytics
+
+popularPrompts
+
+popularCategories
+
+tagAnalytics
+
+ANIMATIONS:
+
+Must be smooth.
+
+Must never lag.
+
+Required:
+
+1 Smooth page transitions
+
+2 Elegant fade reveal
+
+3 Stagger card appearance
+
+4 Before after autoplay slider
+
+5 Card hover lift
+
+6 Soft image zoom hover
+
+7 Search expansion animation
+
+8 Button ripple effect
+
+9 Toast slide animation
+
+10 Scroll reveal fade
+
+11 Mobile navigation transition
+
+12 Skeleton shimmer loading
+
+13 Category transitions
+
+14 Analytics number animation
+
+15 Orbital logo ambient motion
+
+16 Hero subtle parallax
+
+17 Share ripple animation
+
+18 Prompt unlock reveal animation
+
+19 Reel swipe physics
+
+20 Card stagger loading
+
+21 Scroll progress bar
+
+22 Navbar transition
+
+23 Category hover animation
+
+24 Copy success animation
+
+25 Footer appearance animation
+
+26 Lazy image fade
+
+27 Background subtle movement
+
+28 Reel loading animation
+
+29 Smooth modal animation
+
+30 Empty state animation
+
+Animations elegant.
+
+Never distracting.
+
+MOBILE EXPERIENCE:
+
+Mobile first.
+
+App feel.
+
+Large touch targets.
+
+Swipe optimized.
+
+Battery efficient.
+
+Fast.
+
+Excellent Android experience.
+
+Excellent iPhone experience.
+
+FINAL FEEL:
+
+User opens Prompt Labs.
+
+Immediately feels:
+
+"Someone obsessed over every detail."
+
+Premium.
+
+Fast.
+
+Elegant.
+
+Memorable.
+
+Beautiful.
+
+Production ready.
+
+No placeholders.
+
+No demo content.
+
+Real architecture.
+
+Real scalability.
+
+Build complete website.
