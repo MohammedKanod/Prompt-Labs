@@ -1,14 +1,19 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useParams, Link } from "wouter";
-import { store } from "@/lib/store";
 import PromptCard from "@/components/PromptCard";
 import UnlockModal from "@/components/UnlockModal";
 import { ArrowLeft } from "lucide-react";
+import { usePosts, useCategories } from "@/hooks/usePosts";
+import { hasUnlocked, unlockPost } from "@/lib/store";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Category() {
   const { slug } = useParams<{ slug: string }>();
-  const category = store.getAllCategories().find((c) => c.slug === slug);
-  const posts = store.getAllPosts().filter((p) => p.category.toLowerCase() === category?.name.toLowerCase());
+  const { data: allCategories, isLoading: catsLoading } = useCategories();
+  const { data: allPosts, isLoading: postsLoading } = usePosts();
+  
+  const category = (allCategories || []).find((c) => c.slug === slug);
+  const posts = (allPosts || []).filter((p) => p.category.toLowerCase() === category?.name.toLowerCase());
   
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const [activeUnlockPost, setActiveUnlockPost] = useState<string | null>(null);
@@ -20,9 +25,24 @@ export default function Category() {
 
   const handleUnlocked = () => {
     if (activeUnlockPost) {
-      store.unlockPost(activeUnlockPost);
+      unlockPost(activeUnlockPost);
     }
   };
+
+  if (catsLoading || postsLoading) {
+    return (
+      <div className="container mx-auto px-4 py-12 md:py-20 min-h-screen">
+        <Skeleton className="h-6 w-32 mb-8 bg-white/5" />
+        <Skeleton className="h-12 w-1/2 mb-4 bg-white/5" />
+        <Skeleton className="h-6 w-3/4 mb-12 bg-white/5" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[400px] rounded-xl bg-white/5" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (!category) {
     return (
@@ -55,7 +75,7 @@ export default function Category() {
               key={post.id}
               post={post}
               index={index}
-              isUnlocked={store.hasUnlocked(post.id)}
+              isUnlocked={hasUnlocked(post.id)}
               onUnlock={() => handleUnlock(post.id)}
             />
           ))}

@@ -27,7 +27,7 @@ export interface Category {
   count: number;
 }
 
-const INITIAL_CATEGORIES: Category[] = [
+export const INITIAL_CATEGORIES: Category[] = [
   { id: "1", slug: "cinematic", name: "Cinematic", description: "Movie-like dramatic lighting and composition", count: 12 },
   { id: "2", slug: "portrait", name: "Portrait", description: "Stunning character and people photography", count: 8 },
   { id: "3", slug: "architecture", name: "Architecture", description: "Breathtaking buildings and structures", count: 6 },
@@ -36,7 +36,7 @@ const INITIAL_CATEGORIES: Category[] = [
   { id: "6", slug: "landscape", name: "Landscape", description: "Vast nature and environments", count: 11 },
 ];
 
-const INITIAL_POSTS: Post[] = [
+export const INITIAL_POSTS: Post[] = [
   {
     id: "10001",
     slug: "10001-cinematic-neon-rain",
@@ -119,65 +119,21 @@ const INITIAL_POSTS: Post[] = [
   }
 ];
 
-class Store {
-  private getPosts(): Post[] {
-    const stored = localStorage.getItem('promptlabs_posts');
-    if (!stored) {
-      localStorage.setItem('promptlabs_posts', JSON.stringify(INITIAL_POSTS));
-      return INITIAL_POSTS;
-    }
-    return JSON.parse(stored);
-  }
-
-  private getCategories(): Category[] {
-    const stored = localStorage.getItem('promptlabs_categories');
-    if (!stored) {
-      localStorage.setItem('promptlabs_categories', JSON.stringify(INITIAL_CATEGORIES));
-      return INITIAL_CATEGORIES;
-    }
-    return JSON.parse(stored);
-  }
-
-  getAllPosts() {
-    return this.getPosts().filter(p => p.published);
-  }
-
-  getFeaturedPosts() {
-    return this.getPosts().filter(p => p.published && p.featured);
-  }
-
-  getAllCategories() {
-    return this.getCategories();
-  }
-
-  hasUnlocked(postId: string): boolean {
-    const today = new Date().toISOString().split('T')[0];
-    return localStorage.getItem(`unlocked_${today}_${postId}`) === 'true';
-  }
-
-  unlockPost(postId: string) {
-    const today = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`unlocked_${today}_${postId}`, 'true');
-    // Increment unlock count
-    const posts = this.getPosts();
-    const idx = posts.findIndex(p => p.id === postId);
-    if (idx !== -1) {
-      posts[idx].unlockCount++;
-      localStorage.setItem('promptlabs_posts', JSON.stringify(posts));
-    }
-  }
-
-  isAdmin() {
-    return sessionStorage.getItem('promptlabs_admin') === 'true';
-  }
-
-  setAdmin(status: boolean) {
-    if (status) {
-      sessionStorage.setItem('promptlabs_admin', 'true');
-    } else {
-      sessionStorage.removeItem('promptlabs_admin');
-    }
-  }
+export function isAdmin(): boolean {
+  return sessionStorage.getItem('promptlabs_admin') === 'true';
 }
 
-export const store = new Store();
+export function setAdmin(status: boolean): void {
+  if (status) sessionStorage.setItem('promptlabs_admin', 'true');
+  else sessionStorage.removeItem('promptlabs_admin');
+}
+
+export function hasUnlocked(postId: string): boolean {
+  const today = new Date().toISOString().split('T')[0];
+  return localStorage.getItem(`unlocked_${today}_${postId}`) === 'true';
+}
+
+export function unlockPost(postId: string): void {
+  const today = new Date().toISOString().split('T')[0];
+  localStorage.setItem(`unlocked_${today}_${postId}`, 'true');
+}

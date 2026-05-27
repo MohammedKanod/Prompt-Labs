@@ -1,17 +1,20 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import PromptCard from "@/components/PromptCard";
-import ReelCard from "@/components/ReelCard";
-import { store } from "@/lib/store";
+import { hasUnlocked, unlockPost } from "@/lib/store";
 import UnlockModal from "@/components/UnlockModal";
 import { ArrowRight, BookOpen, Layers, Zap } from "lucide-react";
+import { usePosts, useCategories } from "@/hooks/usePosts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
-  const posts = store.getAllPosts().slice(0, 4); // Demo prompts
-  const featured = store.getFeaturedPosts();
-  const categories = store.getAllCategories().slice(0, 6);
+  const { data: allPosts, isLoading: postsLoading } = usePosts();
+  const { data: categories, isLoading: catsLoading } = useCategories();
+  
+  const posts = (allPosts || []).slice(0, 4);
+  const categoriesToDisplay = (categories || []).slice(0, 6);
   
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const [activeUnlockPost, setActiveUnlockPost] = useState<string | null>(null);
@@ -23,7 +26,7 @@ export default function Home() {
 
   const handleUnlocked = () => {
     if (activeUnlockPost) {
-      store.unlockPost(activeUnlockPost);
+      unlockPost(activeUnlockPost);
     }
   };
 
@@ -93,15 +96,25 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {posts.map((post, index) => (
-              <PromptCard 
-                key={post.id} 
-                post={post} 
-                index={index}
-                isUnlocked={store.hasUnlocked(post.id)}
-                onUnlock={() => handleUnlock(post.id)}
-              />
-            ))}
+            {postsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-4">
+                  <Skeleton className="h-[300px] w-full rounded-xl bg-white/5" />
+                  <Skeleton className="h-6 w-3/4 bg-white/5" />
+                  <Skeleton className="h-4 w-1/2 bg-white/5" />
+                </div>
+              ))
+            ) : (
+              posts.map((post, index) => (
+                <PromptCard 
+                  key={post.id} 
+                  post={post} 
+                  index={index}
+                  isUnlocked={hasUnlocked(post.id)}
+                  onUnlock={() => handleUnlock(post.id)}
+                />
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -115,23 +128,29 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((cat, index) => (
-              <Link key={cat.id} href={`/category/${cat.slug}`}>
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-background border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center text-center hover:bg-white/5 hover:border-white/10 transition-all cursor-pointer h-full group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:text-primary transition-colors text-white/50">
-                    <Layers size={24} />
-                  </div>
-                  <h3 className="text-white font-medium mb-1">{cat.name}</h3>
-                  <p className="text-xs text-secondary-foreground">{cat.count} prompts</p>
-                </motion.div>
-              </Link>
-            ))}
+            {catsLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-40 rounded-2xl bg-white/5" />
+              ))
+            ) : (
+              categoriesToDisplay.map((cat, index) => (
+                <Link key={cat.id} href={`/category/${cat.slug}`}>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-background border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center text-center hover:bg-white/5 hover:border-white/10 transition-all cursor-pointer h-full group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:text-primary transition-colors text-white/50">
+                      <Layers size={24} />
+                    </div>
+                    <h3 className="text-white font-medium mb-1">{cat.name}</h3>
+                    <p className="text-xs text-secondary-foreground">{cat.count} prompts</p>
+                  </motion.div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

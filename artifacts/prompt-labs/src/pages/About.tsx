@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { OrbitalLogo } from "@/components/OrbitalLogo";
 import AdminModal from "@/components/AdminModal";

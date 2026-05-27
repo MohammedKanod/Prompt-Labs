@@ -1,20 +1,44 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "wouter";
-import { store } from "@/lib/store";
+import { hasUnlocked, unlockPost } from "@/lib/store";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import UnlockModal from "@/components/UnlockModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Copy, Check, Share2, ArrowLeft } from "lucide-react";
+import { Lock, Copy, Check, Share2, ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePost } from "@/hooks/usePosts";
+import { incrementField } from "@/lib/firestore";
+import { trackEvent } from "@/lib/analytics";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Post() {
   const { id } = useParams<{ id: string }>();
-  const post = store.getAllPosts().find((p) => p.id === id);
+  const { data: post, isLoading } = usePost(id || "");
   const { toast } = useToast();
 
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      incrementField(id, 'views').catch(console.error);
+      trackEvent("prompt_view", { post_id: id });
+    }
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-5xl">
+        <Skeleton className="h-6 w-32 mb-8 bg-white/5" />
+        <Skeleton className="h-[600px] w-full rounded-2xl bg-white/5 mb-8" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-3/4 bg-white/5" />
+          <Skeleton className="h-32 w-full bg-white/5" />
+        </div>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
@@ -27,13 +51,15 @@ export default function Post() {
     );
   }
 
-  const isUnlocked = store.hasUnlocked(post.id);
+  const isUnlocked = hasUnlocked(post.id);
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(post.prompt);
       setCopied(true);
       toast({ title: "Prompt copied!", description: "Ready to paste into your AI generator." });
+      incrementField(post.id, 'copyCount').catch(console.error);
+      trackEvent("prompt_copy", { post_id: post.id });
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy", err);
@@ -41,7 +67,15 @@ export default function Post() {
   };
 
   const handleUnlocked = () => {
-    store.unlockPost(post.id);
+    unlockPost(post.id);
+    incrementField(post.id, 'unlockCount').catch(console.error);
+    trackEvent("prompt_unlock", { post_id: post.id });
+  };
+
+  const handleShare = () => {
+    trackEvent("prompt_share", { post_id: post.id });
+    incrementField(post.id, 'shareCount').catch(console.error);
+    toast({ title: "Shared!", description: "Sharing functionality simulated." });
   };
 
   return (
@@ -94,7 +128,7 @@ export default function Post() {
             </div>
             
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <Button variant="outline" className="border-white/10 flex-1 md:flex-none">
+              <Button variant="outline" className="border-white/10 flex-1 md:flex-none" onClick={handleShare}>
                 <Share2 size={16} className="mr-2" /> Share
               </Button>
               {isUnlocked && (

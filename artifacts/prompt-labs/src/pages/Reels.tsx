@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { store } from "@/lib/store";
+import { useState, useEffect } from "react";
 import ReelCard from "@/components/ReelCard";
 import UnlockModal from "@/components/UnlockModal";
+import { usePosts } from "@/hooks/usePosts";
+import { hasUnlocked, unlockPost } from "@/lib/store";
+import { Loader2 } from "lucide-react";
 
 export default function Reels() {
-  const posts = store.getAllPosts().filter(p => p.reelEnabled);
+  const { data: allPosts, isLoading } = usePosts();
+  const posts = (allPosts || []).filter(p => p.reelEnabled);
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const [activeUnlockPost, setActiveUnlockPost] = useState<string | null>(null);
 
@@ -23,9 +26,17 @@ export default function Reels() {
 
   const handleUnlocked = () => {
     if (activeUnlockPost) {
-      store.unlockPost(activeUnlockPost);
+      unlockPost(activeUnlockPost);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex justify-center">
@@ -34,7 +45,7 @@ export default function Reels() {
           <ReelCard
             key={post.id}
             post={post}
-            isUnlocked={store.hasUnlocked(post.id)}
+            isUnlocked={hasUnlocked(post.id)}
             onUnlock={() => handleUnlock(post.id)}
           />
         ))}
@@ -50,7 +61,7 @@ export default function Reels() {
         onClose={() => setUnlockModalOpen(false)}
         onUnlocked={handleUnlocked}
       />
-      <style dangerouslySetAttribute={{__html: `
+      <style dangerouslySetInnerHTML={{__html: `
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }

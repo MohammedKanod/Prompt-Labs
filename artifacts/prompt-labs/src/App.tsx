@@ -24,7 +24,14 @@ import Terms from "@/pages/Terms";
 import FAQ from "@/pages/FAQ";
 import HowItWorks from "@/pages/HowItWorks";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
 function Router() {
   return (

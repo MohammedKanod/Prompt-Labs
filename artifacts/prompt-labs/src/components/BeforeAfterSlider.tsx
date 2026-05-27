@@ -15,7 +15,7 @@ export default function BeforeAfterSlider({ beforeImage, afterImage, autoPlay = 
   const controls = useAnimation();
   
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
     if (autoPlay && !isDragging) {
       const animate = async () => {
         await controls.start({ x: ["0%", "20%", "-20%", "0%"], transition: { duration: 8, ease: "easeInOut", repeat: Infinity } });
@@ -24,7 +24,9 @@ export default function BeforeAfterSlider({ beforeImage, afterImage, autoPlay = 
     } else {
       controls.stop();
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [autoPlay, isDragging, controls]);
 
   const handleMove = (clientX: number) => {
