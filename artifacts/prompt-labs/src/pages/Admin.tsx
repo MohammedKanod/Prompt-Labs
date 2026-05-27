@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { isAdmin, setAdmin, Post, Category } from "@/lib/store";
+import { useRealtimeAnalytics } from "@/hooks/useRealtimeAnalytics";
+import AnimatedNumber from "@/components/AnimatedNumber";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,10 @@ import {
   RefreshCw,
   AlertTriangle,
   Terminal,
-  CheckCircle2
+  CheckCircle2,
+  Radio,
+  WifiOff,
+  Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -143,7 +148,7 @@ export default function Admin() {
         </TabsList>
 
         <TabsContent value="analytics">
-          <AnalyticsTab posts={posts || []} />
+          <AnalyticsTab />
         </TabsContent>
 
         <TabsContent value="posts">
@@ -320,74 +325,130 @@ export default function Admin() {
   );
 }
 
-function AnalyticsTab({ posts }: { posts: Post[] }) {
-  const totals = posts.reduce((acc, post) => ({
-    views: acc.views + (post.views || 0),
-    unlocks: acc.unlocks + (post.unlockCount || 0),
-    copies: acc.copies + (post.copyCount || 0),
-    shares: acc.shares + (post.shareCount || 0),
-  }), { views: 0, unlocks: 0, copies: 0, shares: 0 });
-
-  const topPosts = [...posts].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+function AnalyticsTab() {
+  const { totals, topPosts, posts, isConnected, isLoading, error, lastUpdated } = useRealtimeAnalytics();
 
   const stats = [
-    { label: "Total Views", value: totals.views.toLocaleString(), icon: Eye, color: "text-blue-400" },
-    { label: "Total Unlocks", value: totals.unlocks.toLocaleString(), icon: Unlock, color: "text-purple-400" },
-    { label: "Prompt Copies", value: totals.copies.toLocaleString(), icon: Copy, color: "text-green-400" },
-    { label: "Shares", value: totals.shares.toLocaleString(), icon: Share2, color: "text-orange-400" }
+    { label: "Total Views",    value: totals.views,   icon: Eye,      color: "text-blue-400",   bg: "bg-blue-400/10"   },
+    { label: "Total Unlocks",  value: totals.unlocks, icon: Unlock,   color: "text-purple-400", bg: "bg-purple-400/10" },
+    { label: "Prompt Copies",  value: totals.copies,  icon: Copy,     color: "text-green-400",  bg: "bg-green-400/10"  },
+    { label: "Shares",         value: totals.shares,  icon: Share2,   color: "text-orange-400", bg: "bg-orange-400/10" },
   ];
 
   return (
     <div className="space-y-8">
+      {/* Live status bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isLoading ? (
+            <><Loader2 size={14} className="animate-spin text-secondary-foreground" />
+            <span className="text-sm text-secondary-foreground">Connecting to Firestore...</span></>
+          ) : isConnected ? (
+            <><div className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+              </div>
+              <Radio size={13} className="text-green-400" />
+              <span className="text-sm text-green-400 font-medium">Live</span>
+              <span className="text-xs text-secondary-foreground">· updates in real time</span>
+            </>
+          ) : (
+            <><WifiOff size={14} className="text-red-400" />
+            <span className="text-sm text-red-400">{error ?? "Disconnected"}</span></>
+          )}
+        </div>
+        {lastUpdated && (
+          <div className="flex items-center gap-1.5 text-xs text-secondary-foreground">
+            <Clock size={11} />
+            Last updated {lastUpdated.toLocaleTimeString()}
+          </div>
+        )}
+      </div>
+
+      {/* Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <Card key={i} className="bg-card border-white/5 overflow-hidden group">
+          <Card key={i} className="bg-card border-white/5 overflow-hidden group relative">
+            {/* subtle flash when value changes */}
+            <div className="absolute inset-0 rounded-xl pointer-events-none" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-secondary-foreground">{stat.label}</CardTitle>
-              <stat.icon size={18} className={`${stat.color} opacity-70 group-hover:scale-110 transition-transform`} />
+              <div className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center`}>
+                <stat.icon size={15} className={stat.color} />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
+              {isLoading ? (
+                <div className="h-8 w-24 rounded bg-white/5 animate-pulse" />
+              ) : (
+                <AnimatedNumber
+                  value={stat.value}
+                  className="text-2xl font-bold text-white tabular-nums"
+                />
+              )}
               <p className="text-xs text-secondary-foreground mt-1 flex items-center gap-1">
                 <TrendingUp size={12} className="text-green-400" />
-                <span className="text-green-400 font-medium">+12%</span> from last month
+                <span className="text-muted">{posts.length} prompt{posts.length !== 1 ? "s" : ""} tracked</span>
               </p>
             </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* Top posts table */}
       <Card className="bg-card border-white/5">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-white text-lg">Top Performing Prompts</CardTitle>
+          {isConnected && (
+            <span className="text-xs text-secondary-foreground bg-white/5 rounded-full px-3 py-1">
+              Sorted by views · live
+            </span>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {topPosts.map((post, i) => (
-              <div key={post.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-default">
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-                    {i + 1}
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-14 rounded-lg bg-white/5 animate-pulse" />
+              ))}
+            </div>
+          ) : topPosts.length === 0 ? (
+            <p className="text-secondary-foreground text-sm py-4 text-center">No posts yet. Seed demo data or create a post to see stats here.</p>
+          ) : (
+            <div className="space-y-3">
+              {topPosts.map((post, i) => (
+                <div
+                  key={post.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/[0.08] transition-colors"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                      {i + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">{post.title}</p>
+                      <p className="text-xs text-secondary-foreground">{post.category} · {post.modelUsed}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-medium">{post.title}</p>
-                    <p className="text-xs text-secondary-foreground">{post.category}</p>
+                  <div className="flex items-center gap-6 shrink-0 ml-4">
+                    <div className="text-center min-w-[48px]">
+                      <p className="text-[10px] text-secondary-foreground uppercase tracking-wider mb-0.5">Views</p>
+                      <AnimatedNumber value={post.views || 0} className="text-sm font-bold text-white tabular-nums" />
+                    </div>
+                    <div className="text-center min-w-[48px]">
+                      <p className="text-[10px] text-secondary-foreground uppercase tracking-wider mb-0.5">Unlocks</p>
+                      <AnimatedNumber value={post.unlockCount || 0} className="text-sm font-bold text-white tabular-nums" />
+                    </div>
+                    <div className="text-center min-w-[48px]">
+                      <p className="text-[10px] text-secondary-foreground uppercase tracking-wider mb-0.5">Copies</p>
+                      <AnimatedNumber value={post.copyCount || 0} className="text-sm font-bold text-white tabular-nums" />
+                    </div>
+                    <ChevronRight size={16} className="text-secondary-foreground" />
                   </div>
                 </div>
-                <div className="flex items-center gap-8">
-                  <div className="text-center">
-                    <p className="text-xs text-secondary-foreground uppercase tracking-tighter">Views</p>
-                    <p className="text-sm font-bold text-white">{post.views}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-secondary-foreground uppercase tracking-tighter">Unlocks</p>
-                    <p className="text-sm font-bold text-white">{post.unlockCount}</p>
-                  </div>
-                  <ChevronRight size={16} className="text-secondary-foreground" />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
