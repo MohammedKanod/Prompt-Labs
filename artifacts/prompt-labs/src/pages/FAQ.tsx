@@ -5,7 +5,7 @@ export default function FAQ() {
   const faqs = [
     {
       q: "What is Prompt Labs?",
-      a: "Prompt Labs is a premium, admin-curated archive of high-quality text prompts designed to yield exceptional results in AI image generators like Midjourney, DALL-E, and Stable Diffusion."
+      a: "Prompt Labs is a premium archive of high-quality text prompts engineered to yield exceptional results in AI image generators like Midjourney, DALL-E, and Stable Diffusion. Every prompt is rigorously tested before it goes live."
     },
     {
       q: "How does unlocking work?",

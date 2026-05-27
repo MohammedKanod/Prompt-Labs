@@ -13,7 +13,7 @@ export default function Footer() {
               <span className="text-xl font-bold tracking-tight text-white">Prompt Labs</span>
             </Link>
             <p className="text-sm text-secondary-foreground max-w-xs leading-relaxed">
-              Admin curated AI prompts engineered for visual creativity. A premium archive for designers, artists, and creators.
+              The finest AI prompts for image generation — tested, refined, and ready to use. Built for designers, artists, and creators who demand results.
             </p>
           </div>
           

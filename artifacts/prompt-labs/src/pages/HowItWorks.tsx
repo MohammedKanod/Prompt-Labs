@@ -7,7 +7,7 @@ export default function HowItWorks() {
     {
       icon: Search,
       title: "Discover",
-      desc: "Browse our curated archive of high-end AI prompts. Use the before/after slider to see exactly how the prompt transforms a base concept into a masterpiece."
+      desc: "Browse our archive of high-end AI prompts. Use the before/after slider to see exactly how the prompt transforms a base concept into a masterpiece."
     },
     {
       icon: Unlock,
