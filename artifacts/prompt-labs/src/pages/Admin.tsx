@@ -888,23 +888,15 @@ function CategoryDialog({ isOpen, onClose, category }: { isOpen: boolean, onClos
 const FIRESTORE_RULES = `rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Public read for all posts and categories.
+    // Writes are open — admin access is enforced at the app level.
     match /posts/{postId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if true;
     }
     match /categories/{catId} {
       allow read: if true;
-      allow write: if false;
-    }
-  }
-}`;
-
-const STORAGE_RULES = `rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
+      allow write: if true;
     }
   }
 }`;
@@ -915,7 +907,7 @@ function SettingsTab() {
   const [seeding, setSeeding] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [seedResult, setSeedResult] = useState<{ posts: number; categories: number } | null>(null);
-  const [copiedRules, setCopiedRules] = useState<"firestore" | "storage" | null>(null);
+  const [copiedRules, setCopiedRules] = useState(false);
   const [copiedIndexes, setCopiedIndexes] = useState(false);
 
   const handleSeed = async () => {
@@ -956,10 +948,10 @@ function SettingsTab() {
     }
   };
 
-  const copyToClipboard = async (text: string, type: "firestore" | "storage" | "indexes") => {
+  const copyToClipboard = async (text: string, type: "firestore" | "indexes") => {
     await navigator.clipboard.writeText(text);
     if (type === "indexes") { setCopiedIndexes(true); setTimeout(() => setCopiedIndexes(false), 2000); }
-    else { setCopiedRules(type); setTimeout(() => setCopiedRules(null), 2000); }
+    else { setCopiedRules(true); setTimeout(() => setCopiedRules(false), 2000); }
   };
 
   const indexJson = JSON.stringify({
@@ -973,9 +965,7 @@ function SettingsTab() {
 
   const steps = [
     { label: "Create Firestore Database", detail: "Firebase Console → Build → Firestore Database → Create database → choose region → Start in test mode → Enable" },
-    { label: "Set Firestore Security Rules", detail: "Firestore → Rules tab → paste the rules below → Publish" },
-    { label: "Enable Firebase Storage", detail: "Firebase Console → Build → Storage → Get started → choose region → Done" },
-    { label: "Set Storage Security Rules", detail: "Storage → Rules tab → paste the rules below → Publish" },
+    { label: "Set Firestore Security Rules", detail: "Firestore → Rules tab → paste the rules below → Publish. This allows reads and writes (admin access is enforced at the app level)." },
     { label: "Seed Demo Data (optional)", detail: "Come back here and click the Seed button below to populate 8 demo posts and 6 categories" },
   ];
 
@@ -1011,29 +1001,10 @@ function SettingsTab() {
             className="border-white/10 text-secondary-foreground hover:text-white"
             onClick={() => copyToClipboard(FIRESTORE_RULES, "firestore")}
           >
-            {copiedRules === "firestore" ? <><CheckCircle2 size={14} className="mr-1.5 text-green-400" />Copied</> : <><Copy size={14} className="mr-1.5" />Copy</>}
+            {copiedRules ? <><CheckCircle2 size={14} className="mr-1.5 text-green-400" />Copied</> : <><Copy size={14} className="mr-1.5" />Copy</>}
           </Button>
         </div>
         <pre className="bg-[#0a0c10] border border-white/10 rounded-xl p-5 text-sm text-[#C2C7CF] overflow-x-auto leading-relaxed font-mono whitespace-pre">{FIRESTORE_RULES}</pre>
-      </div>
-
-      {/* Storage Rules */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Terminal size={16} className="text-primary" />
-            <h3 className="text-white font-semibold">Firebase Storage Rules</h3>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-white/10 text-secondary-foreground hover:text-white"
-            onClick={() => copyToClipboard(STORAGE_RULES, "storage")}
-          >
-            {copiedRules === "storage" ? <><CheckCircle2 size={14} className="mr-1.5 text-green-400" />Copied</> : <><Copy size={14} className="mr-1.5" />Copy</>}
-          </Button>
-        </div>
-        <pre className="bg-[#0a0c10] border border-white/10 rounded-xl p-5 text-sm text-[#C2C7CF] overflow-x-auto leading-relaxed font-mono whitespace-pre">{STORAGE_RULES}</pre>
       </div>
 
       {/* Composite Indexes */}
