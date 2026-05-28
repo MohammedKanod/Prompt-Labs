@@ -72,10 +72,19 @@ export default function Post() {
     trackEvent("prompt_unlock", { post_id: post.id });
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     trackEvent("prompt_share", { post_id: post.id });
-    incrementField(post.id, 'shareCount').catch(console.error);
-    toast({ title: "Shared!", description: "Sharing functionality simulated." });
+    incrementField(post.id, "shareCount").catch(console.error);
+
+    const url = window.location.href;
+    const shareData = { title: post.title, text: `Check out this AI prompt: ${post.title}`, url };
+
+    if (navigator.share && navigator.canShare?.(shareData)) {
+      try { await navigator.share(shareData); } catch { /* cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copied!", description: "Share it anywhere." });
+    }
   };
 
   return (

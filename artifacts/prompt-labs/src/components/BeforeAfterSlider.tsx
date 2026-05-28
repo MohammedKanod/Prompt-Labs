@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import { motion, useAnimation, useMotionValue } from "framer-motion";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { GripVertical } from "lucide-react";
 
 interface BeforeAfterSliderProps {
@@ -8,119 +7,119 @@ interface BeforeAfterSliderProps {
   autoPlay?: boolean;
 }
 
-export default function BeforeAfterSlider({ beforeImage, afterImage, autoPlay = true }: BeforeAfterSliderProps) {
-  const [sliderPosition, setSliderPosition] = useState(50);
+export default function BeforeAfterSlider({
+  beforeImage,
+  afterImage,
+  autoPlay = true,
+}: BeforeAfterSliderProps) {
+  const [position, setPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const controls = useAnimation();
-  
-  useEffect(() => {
-    let interval: NodeJS.Timeout | undefined;
-    if (autoPlay && !isDragging) {
-      const animate = async () => {
-        await controls.start({ x: ["0%", "20%", "-20%", "0%"], transition: { duration: 8, ease: "easeInOut", repeat: Infinity } });
-      };
-      animate();
-    } else {
-      controls.stop();
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [autoPlay, isDragging, controls]);
+  const rafRef = useRef<number>(0);
+  const startTimeRef = useRef<number | null>(null);
 
-  const handleMove = (clientX: number) => {
+  // Smooth auto-play — oscillates the reveal position, never moves pixels
+  useEffect(() => {
+    if (!autoPlay || isDragging) {
+      cancelAnimationFrame(rafRef.current);
+      return;
+    }
+    startTimeRef.current = null;
+    const CYCLE = 5000; // ms for one full back-and-forth
+
+    const tick = (time: number) => {
+      if (!startTimeRef.current) startTimeRef.current = time;
+      const elapsed = (time - startTimeRef.current) % (CYCLE * 2);
+      const t = elapsed / CYCLE; // 0 → 2
+      const progress = t <= 1 ? t : 2 - t; // ping-pong 0→1→0
+      // ease-in-out cubic
+      const eased = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+      setPosition(15 + eased * 70); // oscillate 15%…85%
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [autoPlay, isDragging]);
+
+  const updateFromClient = useCallback((clientX: number) => {
     if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    const percentage = (x / rect.width) * 100;
-    setSliderPosition(percentage);
-  };
+    const { left, width } = containerRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((clientX - left) / width) * 100));
+    setPosition(pct);
+  }, []);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Pointer events (handles mouse + touch uniformly)
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
-    handleMove(e.clientX);
+    updateFromClient(e.clientX);
   };
-
-  const handleTouchDown = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    handleMove(e.touches[0].clientX);
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    updateFromClient(e.clientX);
   };
+  const handlePointerUp = () => setIsDragging(false);
 
-  useEffect(() => {
-    const handleMouseUp = () => setIsDragging(false);
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) handleMove(e.clientX);
-    };
-    const handleTouchMove = (e: TouchEvent) => {
-      if (isDragging) handleMove(e.touches[0].clientX);
-    };
-
-    if (isDragging) {
-      window.addEventListener("mouseup", handleMouseUp);
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("touchend", handleMouseUp);
-      window.addEventListener("touchmove", handleTouchMove);
-    }
-
-    return () => {
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("touchend", handleMouseUp);
-      window.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, [isDragging]);
+  const clipBefore = `inset(0 ${100 - position}% 0 0)`;
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden select-none cursor-ew-resize group rounded-t-xl"
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchDown}
+      className="relative w-full h-full select-none overflow-hidden rounded-t-xl"
+      style={{ cursor: isDragging ? "grabbing" : "ew-resize" }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      <div className="absolute inset-0 bg-secondary" />
-      
-      {/* After Image (Base) */}
-      <div className="absolute inset-0">
-        <img 
-          src={afterImage} 
-          alt="After prompt" 
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          draggable={false}
-        />
-        <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold tracking-widest text-white/80">
-          AFTER
-        </div>
+      {/* ── After image (always fully visible underneath) ── */}
+      <img
+        src={afterImage}
+        alt="After"
+        draggable={false}
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+      />
+      <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold tracking-widest text-white/80 z-10">
+        AFTER
       </div>
 
-      {/* Before Image (Overlay) */}
-      <motion.div 
-        className="absolute inset-0 overflow-hidden border-r-2 border-white/80"
-        style={{ width: `${sliderPosition}%` }}
-        animate={autoPlay && !isDragging ? controls : undefined}
+      {/* ── Before image — clipped, never moves ── */}
+      <img
+        src={beforeImage}
+        alt="Before"
+        draggable={false}
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        style={{ clipPath: clipBefore }}
+      />
+      <div
+        className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold tracking-widest text-white/80 z-10 transition-opacity"
+        style={{ opacity: position > 8 ? 1 : 0 }}
       >
-        <img 
-          src={beforeImage} 
-          alt="Before prompt" 
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          style={{ width: '100vw', maxWidth: 'none' }}
-          draggable={false}
-        />
-        <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold tracking-widest text-white/80">
-          BEFORE
-        </div>
-      </motion.div>
+        BEFORE
+      </div>
 
-      {/* Slider Handle */}
-      <motion.div 
-        className="absolute top-0 bottom-0 w-0.5 bg-white/0 flex items-center justify-center pointer-events-none"
-        style={{ left: `${sliderPosition}%` }}
-        animate={autoPlay && !isDragging ? controls : undefined}
+      {/* ── Divider line ── */}
+      <div
+        className="absolute top-0 bottom-0 w-px bg-white/80 z-20 pointer-events-none"
+        style={{ left: `${position}%` }}
+      />
+
+      {/* ── Handle ── */}
+      <div
+        className="absolute top-1/2 z-20 -translate-y-1/2 -translate-x-1/2 pointer-events-none"
+        style={{ left: `${position}%` }}
       >
-        <div className={`w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shadow-lg transition-transform ${isDragging ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}>
-          <GripVertical size={16} />
+        <div
+          className={`w-8 h-8 rounded-full bg-white/15 backdrop-blur-md border border-white/40 flex items-center justify-center text-white shadow-lg transition-transform duration-150 ${
+            isDragging ? "scale-125" : "scale-100"
+          }`}
+        >
+          <GripVertical size={15} />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

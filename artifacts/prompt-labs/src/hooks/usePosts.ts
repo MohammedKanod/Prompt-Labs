@@ -12,7 +12,19 @@ export function useAllPostsAdmin() {
 }
 
 export function usePost(id: string) {
-  return useQuery({ queryKey: ["post", id], queryFn: () => fs.getPost(id), enabled: !!id });
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["post", id],
+    queryFn: () => fs.getPost(id),
+    enabled: !!id,
+    // Use cached listing data immediately so the post never shows "not found"
+    // while waiting for the individual Firestore fetch
+    initialData: () => {
+      const fromPublic = qc.getQueryData<Post[]>(["posts"]);
+      const fromAdmin  = qc.getQueryData<Post[]>(["posts", "admin"]);
+      return (fromPublic ?? fromAdmin)?.find(p => p.id === id);
+    },
+  });
 }
 
 export function useCategories() {

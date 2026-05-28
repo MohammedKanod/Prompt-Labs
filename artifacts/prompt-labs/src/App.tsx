@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ScrollToTop from "@/components/ScrollToTop";
 
 // Pages
 import Home from "@/pages/Home";
@@ -36,6 +37,7 @@ const queryClient = new QueryClient({
 function Router() {
   return (
     <div className="flex min-h-[100dvh] flex-col">
+      <ScrollToTop />
       <Navbar />
       <main className="flex-1">
         <Switch>
