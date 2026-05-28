@@ -26,19 +26,21 @@ function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
 export async function getPosts(): Promise<Post[]> {
   const q = query(collection(db, "posts"), where("published", "==", true));
   const snapshot = await withTimeout(getDocs(q));
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Post));
+  // id: d.id must come LAST so the Firestore document ID always wins over
+  // any stale `id` field that may have been stored inside the document data.
+  return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Post));
 }
 
 export async function getAllPostsAdmin(): Promise<Post[]> {
   const snapshot = await withTimeout(getDocs(collection(db, "posts")));
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Post));
+  return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Post));
 }
 
 export async function getPost(id: string): Promise<Post | null> {
   const docRef = doc(db, "posts", id);
   const snapshot = await withTimeout(getDoc(docRef));
   if (snapshot.exists()) {
-    return { id: snapshot.id, ...snapshot.data() } as Post;
+    return { ...snapshot.data(), id: snapshot.id } as Post;
   }
   return null;
 }

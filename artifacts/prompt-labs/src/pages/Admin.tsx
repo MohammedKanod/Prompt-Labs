@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { isAdmin, setAdmin, Post, Category } from "@/lib/store";
 import { useRealtimeAnalytics } from "@/hooks/useRealtimeAnalytics";
@@ -499,6 +499,10 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
   const [isUploading, setIsUploading] = useState<false | 'before' | 'after'>(false);
   const [generatedId, setGeneratedId] = useState("");
 
+  // Refs so we can reset file inputs after clear/upload (allows re-selecting the same file)
+  const beforeFileRef = useRef<HTMLInputElement>(null);
+  const afterFileRef  = useRef<HTMLInputElement>(null);
+
   // JSON paste panel state
   const [jsonPanelOpen, setJsonPanelOpen] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
@@ -544,9 +548,14 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'beforeImage' | 'afterImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Capture ref before async so we can reset it after upload regardless of state
+    const inputEl = field === 'beforeImage' ? beforeFileRef.current : afterFileRef.current;
     setIsUploading(field === 'beforeImage' ? 'before' : 'after');
     try {
-      const publicId = `prompt-labs/posts/${generatedId}/${field === 'beforeImage' ? 'before' : 'after'}`;
+      // Append timestamp to public_id so Cloudinary always stores a fresh version
+      // and the returned URL is unique — prevents browser from showing the old cached image
+      const ts = Date.now();
+      const publicId = `prompt-labs/posts/${generatedId}/${field === 'beforeImage' ? 'before' : 'after'}_${ts}`;
       const url = await uploadImage(file, publicId);
       setFormData(prev => ({ ...prev, [field]: url }));
       toast({ title: "Image uploaded to Cloudinary ✓" });
@@ -554,6 +563,8 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
       toast({ title: "Upload failed", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsUploading(false);
+      // Always reset the input so the same file can be re-selected if needed
+      if (inputEl) inputEl.value = "";
     }
   };
 
@@ -561,14 +572,17 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
     e.preventDefault();
     const tags = tagInput.split(",").map(t => t.trim()).filter(Boolean);
     const slug = `${generatedId}-${formData.title?.toLowerCase().replace(/\s+/g, "-")}`;
-    const finalData = { ...formData, tags, slug, id: generatedId } as Post;
+    // Strip `id` from data written to Firestore — the document's own ID is the source of truth
+    const { id: _stripId, ...dataWithoutId } = { ...formData, tags, slug } as Post;
+    const dataToSave = dataWithoutId as Omit<Post, 'id'>;
 
     try {
       if (post) {
-        await updateMutation.mutateAsync({ id: post.id, data: finalData });
+        // post.id is the real Firestore document ID (guaranteed by the fixed spread order in getPosts)
+        await updateMutation.mutateAsync({ id: post.id, data: dataToSave });
         toast({ title: "Post updated" });
       } else {
-        await createMutation.mutateAsync(finalData);
+        await createMutation.mutateAsync(dataToSave);
         toast({ title: "Post created" });
       }
       onClose();
@@ -700,6 +714,7 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
                       : <><CloudUpload size={20} className="text-secondary-foreground" /><span className="text-xs text-secondary-foreground">Click to select file</span></>
                     }
                     <Input
+                      ref={field === 'beforeImage' ? beforeFileRef : afterFileRef}
                       type="file"
                       accept="image/*"
                       className="hidden"
@@ -714,7 +729,12 @@ function PostDialog({ isOpen, onClose, post, categories }: { isOpen: boolean, on
                       <img src={formData[field]} alt={label} className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => setFormData(p => ({ ...p, [field]: "" }))}
+                        onClick={() => {
+                          setFormData(p => ({ ...p, [field]: "" }));
+                          // Also reset the file input so the same file can be re-selected
+                          const ref = field === 'beforeImage' ? beforeFileRef : afterFileRef;
+                          if (ref.current) ref.current.value = "";
+                        }}
                         className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80 transition-colors"
                       >
                         <Trash2 size={12} className="text-white" />
