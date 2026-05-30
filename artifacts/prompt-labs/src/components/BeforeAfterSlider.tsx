@@ -5,6 +5,7 @@ interface BeforeAfterSliderProps {
   beforeImage: string;
   afterImage: string;
   autoPlay?: boolean;
+  loading?: "lazy" | "eager";
 }
 
 /**
@@ -16,6 +17,7 @@ export default function BeforeAfterSlider({
   beforeImage,
   afterImage,
   autoPlay = true,
+  loading = "lazy",
 }: BeforeAfterSliderProps) {
   const containerRef   = useRef<HTMLDivElement>(null);
   const dividerRef     = useRef<HTMLDivElement>(null);
@@ -105,6 +107,8 @@ export default function BeforeAfterSlider({
         src={afterImage}
         alt="After"
         draggable={false}
+        loading={loading}
+        decoding="async"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none"
       />
       <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold tracking-widest text-white/80 z-10 pointer-events-none">
@@ -117,6 +121,8 @@ export default function BeforeAfterSlider({
         src={beforeImage}
         alt="Before"
         draggable={false}
+        loading="lazy"
+        decoding="async"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none"
         style={{ clipPath: "inset(0 50% 0 0)" }}
       />

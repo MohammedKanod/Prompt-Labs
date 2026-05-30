@@ -40,7 +40,7 @@ export default function Reels() {
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex justify-center">
-      <div className="w-full md:w-[450px] h-[100dvh] overflow-y-auto snap-y snap-mandatory hide-scrollbar flex flex-col items-center">
+      <div className="w-full md:w-[450px] h-[100dvh] overflow-y-scroll snap-y snap-mandatory hide-scrollbar">
         {posts.map((post) => (
           <ReelCard
             key={post.id}

@@ -87,7 +87,11 @@ export default function PromptCard({ post, index, onUnlock, isUnlocked }: Prompt
 
       {/* Before/After slider — aspect ratio driven so images aren't cropped */}
       <div className="aspect-[4/3] w-full">
-        <BeforeAfterSlider beforeImage={post.beforeImage} afterImage={post.afterImage} />
+        <BeforeAfterSlider
+          beforeImage={post.beforeImage}
+          afterImage={post.afterImage}
+          loading={index === 0 ? "eager" : "lazy"}
+        />
       </div>
 
       {/* Card body */}

@@ -24,6 +24,8 @@ export default function ReelCard({ post, onUnlock, isUnlocked }: ReelCardProps) 
           src={showAfter ? post.afterImage : post.beforeImage} 
           alt={post.title} 
           className="w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
         />
         
         {/* Vignette */}
