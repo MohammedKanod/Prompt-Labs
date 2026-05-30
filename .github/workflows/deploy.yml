@@ -39,12 +39,10 @@ jobs:
       - name: Build
         working-directory: artifacts/prompt-labs
         env:
-          # ---------------------------------------------------------------
-          # BASE_PATH: set to "/" for a user/org page (username.github.io)
-          # Set to "/your-repo-name/" for a project page
-          # e.g.  BASE_PATH: /prompt-labs/
-          # ---------------------------------------------------------------
-          BASE_PATH: /
+          # Auto-detects base path:
+          #   - user/org page  (repo = username.github.io)  → /
+          #   - project page   (any other repo name)        → /repo-name/
+          BASE_PATH: ${{ endsWith(github.event.repository.name, '.github.io') && '/' || format('/{0}/', github.event.repository.name) }}
           NODE_ENV: production
           VITE_FIREBASE_API_KEY: AIzaSyDVlLah6y-gGHBpFHjBuYnQCKo9j57aXVw
           VITE_FIREBASE_AUTH_DOMAIN: prompt-labs-ba475.firebaseapp.com
