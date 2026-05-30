@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd artifacts/prompt-labs && pnpm run build",
+  "buildCommand": "pnpm --filter @workspace/prompt-labs run build",
   "outputDirectory": "artifacts/prompt-labs/dist/public",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
