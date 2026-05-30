@@ -1,0 +1,74 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: artifacts/prompt-labs
+        env:
+          # ---------------------------------------------------------------
+          # BASE_PATH: set to "/" for a user/org page (username.github.io)
+          # Set to "/your-repo-name/" for a project page
+          # e.g.  BASE_PATH: /prompt-labs/
+          # ---------------------------------------------------------------
+          BASE_PATH: /
+          NODE_ENV: production
+          VITE_FIREBASE_API_KEY: AIzaSyDVlLah6y-gGHBpFHjBuYnQCKo9j57aXVw
+          VITE_FIREBASE_AUTH_DOMAIN: prompt-labs-ba475.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: prompt-labs-ba475
+          VITE_FIREBASE_STORAGE_BUCKET: prompt-labs-ba475.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "571281553663"
+          VITE_FIREBASE_APP_ID: "1:571281553663:web:aaeb781df7feba19e134ca"
+          VITE_FIREBASE_MEASUREMENT_ID: G-ZYW719Z9JM
+          VITE_CLOUDINARY_CLOUD_NAME: dvw3m4dhj
+          VITE_CLOUDINARY_UPLOAD_PRESET: prompt_labs_unsigned
+        run: pnpm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifacts/prompt-labs/dist/public
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
