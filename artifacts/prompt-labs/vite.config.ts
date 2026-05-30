@@ -4,9 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import fs from "fs";
 
-const isBuild = process.env.npm_lifecycle_event === "build" ||
-  process.argv.includes("build");
-
 // PORT is only required for dev server, not for production builds
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;

@@ -1,0 +1,22 @@
+{
+  "buildCommand": "cd artifacts/prompt-labs && pnpm run build",
+  "outputDirectory": "artifacts/prompt-labs/dist/public",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "BASE_PATH": "/",
+    "NODE_ENV": "production",
+    "VITE_FIREBASE_API_KEY": "AIzaSyDVlLah6y-gGHBpFHjBuYnQCKo9j57aXVw",
+    "VITE_FIREBASE_AUTH_DOMAIN": "prompt-labs-ba475.firebaseapp.com",
+    "VITE_FIREBASE_PROJECT_ID": "prompt-labs-ba475",
+    "VITE_FIREBASE_STORAGE_BUCKET": "prompt-labs-ba475.firebasestorage.app",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "571281553663",
+    "VITE_FIREBASE_APP_ID": "1:571281553663:web:aaeb781df7feba19e134ca",
+    "VITE_FIREBASE_MEASUREMENT_ID": "G-ZYW719Z9JM",
+    "VITE_CLOUDINARY_CLOUD_NAME": "dvw3m4dhj",
+    "VITE_CLOUDINARY_UPLOAD_PRESET": "prompt_labs_unsigned"
+  }
+}
